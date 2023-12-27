@@ -1,8 +1,7 @@
 """Entry point for the bank recommender application"""
 
-import numpy as np
 import pandas as pd
-from taipy.gui import Gui, State, notify
+from taipy.gui import Gui, State, Icon, notify, navigate
 
 DATA_PATH = "data/customer_data.csv"
 
@@ -49,18 +48,20 @@ selected_ages = [0, 100]
 selected_province = "All"
 selected_incomes = [0, 1000000]
 provinces = ["All"] + province_count.index.to_list()
-selected_data = customer_data.copy()
 
 product_columns = customer_data.columns[5:]
 product_counts = pd.DataFrame(
     {
-        "Product": product_columns,
+        "Product": product_columns[:5],
         "Count": customer_data[product_columns]
         .sum()
         .sort_values(ascending=False)
-        .values.tolist(),
+        .values.tolist()[:5],
     }
 )
+
+customer_data[product_columns] = customer_data[product_columns].astype(bool)
+selected_data = customer_data.copy()
 
 
 def best_product(state: State) -> None:
@@ -71,6 +72,7 @@ def best_product(state: State) -> None:
     Args:
         state: state of the application
     """
+    notify(state, "info", "Filtering data...")
     filtered_data = customer_data.copy()
     if state.selected_gender == "Male":
         filtered_data = filtered_data[filtered_data["sex"] == "H"]
@@ -99,30 +101,78 @@ def best_product(state: State) -> None:
             "Count": product_counts.values.tolist(),
         }
     )
+    notify(state, "success", "Data filtered!")
 
 
-page = """
-# Bank Recommender Application
+def menu_fct(state: State, var_name: str, var_value: dict) -> None:
+    """
+    Changes the page of the application
 
-## Most Popular Products
+    Args:
+        - state: state of the application
+        - var_name: name of the variable changed
+        - var_value: value of the variable
+    """
+    state.page = var_value["args"][0]
+    navigate(state, state.page.replace(" ", "-"))
 
-**Filter by:**<br/>
-Gender: <br/><|{selected_gender}|toggle|lov=Both;Male;Female|on_change=best_product|><br/>
-Age: <br/><|{selected_ages}|slider|min=0|max=100|on_change=best_product|continuous=False|><br/>
-Province: <br/><|{selected_province}|selector|dropdown|lov={provinces}|on_change=best_product|><br/>
-Income (€): <br/><|{selected_incomes}|slider|min=0|max=1000000|on_change=best_product|continuous=False|><br/>
 
-<|{product_counts}|chart|type=bar|title=Most Popular Products|>
-<|{selected_data}|table|rebuild|>
+page = "Popular Products"
 
-## General Customer Data
+menu_lov = [
+    ("Popular Products", Icon("images/popular_products.png", "Popular Products")),
+    ("Customer Data", Icon("images/customer_data.png", "Customer Data")),
+]
 
-<|{sex_chart_data}|chart|type=pie|values=Count|labels=Sex|title=Sex Distribution of Clients|>
-<|{age_chart_data}|chart|type=histogram|options={age_options}|title=Count by Age of Client|>
-<|{province_chart_data}|chart|type=pie|values=Count|labels=Province|title=Province Distribution of Clients|>
-<|{income_chart_data}|chart|type=histogram|options={income_options}|title=Count by Income (€) of Client|>
+ROOT = """
+<|menu|label=Menu|lov={menu_lov}|on_action=menu_fct|>
 """
 
+POPULAR_PRODUCTS_PAGE = """
+# Popular **Products**{: .color-primary}
+
+--------------------------------------------------------------------
+
+## Filter by:<br/>
+<|layout|columns=1 1 1 1|
+Gender: <br/><|{selected_gender}|toggle|lov=Both;Male;Female|on_change=best_product|><br/>
+
+Age: <br/><|{selected_ages}|slider|min=0|max=100|on_change=best_product|continuous=False|><br/>
+
+Province: <br/><|{selected_province}|selector|dropdown|lov={provinces}|on_change=best_product|><br/>
+
+Income (€): <br/><|{selected_incomes}|slider|min=0|max=1000000|on_change=best_product|continuous=False|><br/>
+|>
+
+<|{product_counts}|chart|type=bar|title=Most Popular Products|><br/>
+<|Filtered list of clients|expandable|expanded|
+<|{selected_data}|table|rebuild|>
+|>
+"""
+
+CUSTOMER_DATA_PAGE = """
+# Customer **Data**{: .color-primary}
+
+--------------------------------------------------------------------
+
+
+<|layout|columns=1 1|
+<|{sex_chart_data}|chart|type=pie|values=Count|labels=Sex|title=Sex Distribution of Clients|><br/>
+<|{age_chart_data}|chart|type=histogram|options={age_options}|title=Count by Age of Client|>
+
+<|{province_chart_data}|chart|type=pie|values=Count|labels=Province|title=Province Distribution of Clients|><br/>
+<|{income_chart_data}|chart|type=histogram|options={income_options}|title=Count by Income (€) of Client|>
+|>
+"""
+
+pages = {
+    "/": ROOT,
+    "Popular-Products": POPULAR_PRODUCTS_PAGE,
+    "Customer-Data": CUSTOMER_DATA_PAGE,
+}
+
 if __name__ == "__main__":
-    gui = Gui(page)
-    gui.run(dark_mode=True, debug=True, use_reloader=True)
+    gui = Gui(pages=pages)
+    gui.run(
+        title="Bank Product Recommender", dark_mode=False, debug=True, use_reloader=True
+    )
