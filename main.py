@@ -135,14 +135,16 @@ POPULAR_PRODUCTS_PAGE = """
 
 ## Filter by:<br/>
 <|layout|columns=1 1 1 1|
-Gender: <br/><|{selected_gender}|toggle|lov=Both;Male;Female|on_change=best_product|><br/>
+Gender: <br/><|{selected_gender}|toggle|lov=Both;Male;Female|><br/>
 
-Age: <br/><|{selected_ages}|slider|min=0|max=100|on_change=best_product|continuous=False|><br/>
+Age: <br/><|{selected_ages}|slider|min=0|max=100|continuous=False|><br/>
 
-Province: <br/><|{selected_province}|selector|dropdown|lov={provinces}|on_change=best_product|><br/>
+Province: <br/><|{selected_province}|selector|dropdown|lov={provinces}|><br/>
 
-Income (€): <br/><|{selected_incomes}|slider|min=0|max=1000000|on_change=best_product|continuous=False|><br/>
+Income (€): <br/><|{selected_incomes}|slider|min=0|max=1000000|continuous=False|><br/>
 |>
+
+<|Filter|button|on_action=best_product|><br/>
 
 <|{product_counts}|chart|type=bar|title=Most Popular Products|><br/>
 <|Filtered list of clients|expandable|expanded|
