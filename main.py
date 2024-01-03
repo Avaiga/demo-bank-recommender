@@ -47,6 +47,7 @@ selected_gender = "Both"
 selected_ages = [0, 100]
 selected_province = "All"
 selected_incomes = [0, 1000000]
+selected_seniority = [0, 150]
 provinces = ["All"] + province_count.index.to_list()
 
 product_columns = customer_data.columns[5:]
@@ -62,6 +63,9 @@ product_counts = pd.DataFrame(
 
 customer_data[product_columns] = customer_data[product_columns].astype(bool)
 selected_data = customer_data.copy()
+predicted_data = customer_data.copy()
+predictions_expand = False
+predicted_counts_advertising = None
 
 
 def best_product(state: State) -> None:
@@ -91,6 +95,11 @@ def best_product(state: State) -> None:
         (filtered_data["income"] >= min_income)
         & (filtered_data["income"] <= max_income)
     ]
+    [min_seniority, max_seniority] = state.selected_seniority
+    filtered_data = filtered_data[
+        (filtered_data["seniority_months"] >= min_seniority)
+        & (filtered_data["seniority_months"] <= max_seniority)
+    ]
     state.selected_data = filtered_data
     product_counts = filtered_data[product_columns].sum()
     product_counts = product_counts.sort_values(ascending=False)
@@ -117,6 +126,56 @@ def menu_fct(state: State, var_name: str, var_value: dict) -> None:
     navigate(state, state.page.replace(" ", "-"))
 
 
+def product_prediction(state: State) -> None:
+    """
+    For each row in selected data
+    Get the closest neighbors in terms of age, province and income
+    Get the most popular products for these neighbors
+    Recommend the most popular product that the client does not have
+    """
+    notify(state, "info", "Predicting best products (closest neighbors)...")
+    predictions = []
+    for _, row in state.selected_data.iterrows():
+        age = row["age"]
+        province = row["province_name"]
+        income = row["income"]
+        neighbors = customer_data[
+            (customer_data["age"] == age)
+            & (customer_data["province_name"] == province)
+            & (customer_data["income"] <= income + 10000)
+            & (customer_data["income"] >= income - 10000)
+        ]
+        neighbors_products = neighbors[product_columns].sum()
+        neighbors_products = neighbors_products.sort_values(ascending=False)
+        for product in neighbors_products.index:
+            if row[product] is False:
+                predictions.append(product)
+                break
+    predicted_data = state.selected_data.copy()
+    predicted_data.insert(0, "Predicted Product", predictions)
+    state.predicted_data = predicted_data
+    notify(state, "success", "Best products predicted!")
+    state.predictions_expand = True
+
+
+def launch_campaign(state: State) -> None:
+    """
+    Simulates the results of an advertising campaign
+    based on the predicted best products
+    """
+    notify(state, "info", "Launching advertising campaign...")
+    predictions = state.predicted_data["Predicted Product"].to_list()
+    predicted_counts_advertising = pd.DataFrame(
+        {
+            "Product": predictions,
+            "Count": state.predicted_data[predictions].sum().values.tolist(),
+        }
+    )
+    state.predicted_counts_advertising = predicted_counts_advertising
+    notify(state, "success", "Advertising campaign launched!")
+    navigate(state, "Advertising-Results")
+
+
 page = "Popular Products"
 
 menu_lov = [
@@ -136,20 +195,35 @@ POPULAR_PRODUCTS_PAGE = """
 ## Filter by:<br/>
 <|layout|columns=1 1 1 1|
 Gender: <br/><|{selected_gender}|toggle|lov=Both;Male;Female|><br/>
-
 Age: <br/><|{selected_ages}|slider|min=0|max=100|continuous=False|><br/>
 
 Province: <br/><|{selected_province}|selector|dropdown|lov={provinces}|><br/>
 
 Income (€): <br/><|{selected_incomes}|slider|min=0|max=1000000|continuous=False|><br/>
+
+Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=False|><br/>
 |>
 
 <|Filter|button|on_action=best_product|><br/>
-
-<|{product_counts}|chart|type=bar|title=Most Popular Products|><br/>
+<|Most Popular Products|expandable|expanded=False|
+<|{product_counts}|chart|type=bar|title=Most Popular Products|>
+|><br/>
 <|Filtered list of clients|expandable|expanded|
 <|{selected_data}|table|rebuild|>
 |>
+<|Predict Best Products|button|on_action=product_prediction|><br/><br/>
+<|Predicted Best Products|expandable|expanded={predictions_expand}|
+<|{predicted_data}|table|rebuild|editable|>
+|><br/>
+<|Launch Advertising Campaign|button|on_action=launch_campaign|><br/>
+"""
+
+ADVERTISING_RESULTS_PAGE = """
+# Advertising **Results**{: .color-primary}
+
+--------------------------------------------------------------------
+
+<|{predicted_counts_advertising}|chart|type=bar|title=Advertising Results|>
 """
 
 CUSTOMER_DATA_PAGE = """
@@ -171,6 +245,7 @@ pages = {
     "/": ROOT,
     "Popular-Products": POPULAR_PRODUCTS_PAGE,
     "Customer-Data": CUSTOMER_DATA_PAGE,
+    "Advertising-Results": ADVERTISING_RESULTS_PAGE,
 }
 
 if __name__ == "__main__":
