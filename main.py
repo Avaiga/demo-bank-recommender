@@ -5,7 +5,7 @@ from taipy.gui import Gui, State, Icon, notify, navigate
 
 DATA_PATH = "data/customer_data.csv"
 
-customer_data = pd.read_csv(DATA_PATH)
+customer_data = pd.read_csv(DATA_PATH)[:]
 
 # Sex Pie Chart
 sex_data = customer_data["sex"]
@@ -61,7 +61,8 @@ product_counts = pd.DataFrame(
     }
 )
 
-customer_data[product_columns] = customer_data[product_columns].astype(bool)
+
+customer_data[product_columns] = customer_data[product_columns]
 selected_data = customer_data.copy()
 predicted_data = customer_data.copy()
 predictions_expand = False
@@ -145,10 +146,12 @@ def product_prediction(state: State) -> None:
             & (customer_data["income"] <= income + 10000)
             & (customer_data["income"] >= income - 10000)
         ]
+        # Convert to boolean
+        neighbors = neighbors[product_columns].astype(int)
         neighbors_products = neighbors[product_columns].sum()
         neighbors_products = neighbors_products.sort_values(ascending=False)
         for product in neighbors_products.index:
-            if row[product] is False:
+            if row[product] == 0:
                 predictions.append(product)
                 break
     predicted_data = state.selected_data.copy()
