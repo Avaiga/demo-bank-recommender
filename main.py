@@ -234,11 +234,11 @@ Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=
 <|Filtered list of clients|expandable|expanded|
 <|{selected_data}|table|rebuild|filter|>
 |>
-<|Predict Best Products|button|on_action=product_prediction|><br/><br/>
+<center><|Predict Best Products|button|on_action=product_prediction|><br/><br/></center>
 <|Predicted Best Products|expandable|expanded={predictions_expand}|>
 <|{predicted_data}|table|rebuild|editable|filter|>
 <br/>
-<|Launch Advertising Campaign|button|on_action=launch_campaign|><br/>
+<center><|Launch Advertising Campaign|button|on_action=launch_campaign|><br/></center>
 """
 
 ADVERTISING_RESULTS_PAGE = """
