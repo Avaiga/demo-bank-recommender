@@ -184,6 +184,7 @@ page = "Popular Products"
 menu_lov = [
     ("Popular Products", Icon("images/popular_products.png", "Popular Products")),
     ("Customer Data", Icon("images/customer_data.png", "Customer Data")),
+    ("Advertising Results", Icon("images/advertising_results.png", "Advertising Results")),
 ]
 
 ROOT = """
