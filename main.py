@@ -134,6 +134,13 @@ def product_prediction(state: State) -> None:
     Get the most popular products for these neighbors
     Recommend the most popular product that the client does not have
     """
+    if len(state.selected_data) >= 3000:
+        notify(
+            state,
+            "error",
+            "Please filter the data to less than 3000 rows before predicting",
+        )
+        return
     notify(state, "info", "Predicting best products (closest neighbors)...")
     predictions = []
     for _, row in state.selected_data.iterrows():
@@ -174,6 +181,15 @@ def launch_campaign(state: State) -> None:
             "Count": state.predicted_data[predictions].sum().values.tolist(),
         }
     )
+    # Remove duplicates
+    predicted_counts_advertising = predicted_counts_advertising.drop_duplicates(
+        subset=["Product"]
+    )
+    # Sort by count
+    predicted_counts_advertising = predicted_counts_advertising.sort_values(
+        by=["Count"], ascending=False
+    )
+    print(predicted_counts_advertising)
     state.predicted_counts_advertising = predicted_counts_advertising
     notify(state, "success", "Advertising campaign launched!")
     navigate(state, "Advertising-Results")
@@ -182,9 +198,12 @@ def launch_campaign(state: State) -> None:
 page = "Popular Products"
 
 menu_lov = [
-    ("Popular Products", Icon("images/popular_products.png", "Popular Products")),
+    ("Popular Products", Icon("images/popular_products.png", "Predict Products")),
     ("Customer Data", Icon("images/customer_data.png", "Customer Data")),
-    ("Advertising Results", Icon("images/advertising_results.png", "Advertising Results")),
+    (
+        "Advertising Results",
+        Icon("images/advertising_results.png", "Advertising Results"),
+    ),
 ]
 
 ROOT = """
@@ -192,7 +211,7 @@ ROOT = """
 """
 
 POPULAR_PRODUCTS_PAGE = """
-# Popular **Products**{: .color-primary}
+# Predict Best **Products**{: .color-primary}
 
 --------------------------------------------------------------------
 
@@ -216,9 +235,9 @@ Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=
 <|{selected_data}|table|rebuild|filter|>
 |>
 <|Predict Best Products|button|on_action=product_prediction|><br/><br/>
-<|Predicted Best Products|expandable|expanded={predictions_expand}|
+<|Predicted Best Products|expandable|expanded={predictions_expand}|>
 <|{predicted_data}|table|rebuild|editable|filter|>
-|><br/>
+<br/>
 <|Launch Advertising Campaign|button|on_action=launch_campaign|><br/>
 """
 
@@ -227,7 +246,7 @@ ADVERTISING_RESULTS_PAGE = """
 
 --------------------------------------------------------------------
 
-<|{predicted_counts_advertising}|chart|type=bar|title=Advertising Results|>
+<|{predicted_counts_advertising}|chart|type=bar|title=Advertised Products|>
 """
 
 CUSTOMER_DATA_PAGE = """
