@@ -212,11 +212,11 @@ Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=
 <|{product_counts}|chart|type=bar|title=Most Popular Products|>
 |><br/>
 <|Filtered list of clients|expandable|expanded|
-<|{selected_data}|table|rebuild|>
+<|{selected_data}|table|rebuild|filter|>
 |>
 <|Predict Best Products|button|on_action=product_prediction|><br/><br/>
 <|Predicted Best Products|expandable|expanded={predictions_expand}|
-<|{predicted_data}|table|rebuild|editable|>
+<|{predicted_data}|table|rebuild|editable|filter|>
 |><br/>
 <|Launch Advertising Campaign|button|on_action=launch_campaign|><br/>
 """
