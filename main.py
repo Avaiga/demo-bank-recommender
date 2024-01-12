@@ -183,7 +183,7 @@ def product_prediction(state: State) -> None:
     predicted_data.insert(0, "Predicted Product", predictions)
     state.predicted_data = predicted_data
     predictions = state.predicted_data["Predicted Product"].to_list()
-    state.predictions_unique = list(set(predictions))
+    state.predictions_unique = list(set(predictions))[:5]
     counts = []
     for product in state.predictions_unique:
         counts.append(predictions.count(product))
@@ -217,14 +217,18 @@ def update_metric(state: State) -> None:
     """
     state.data_metric = pd.DataFrame({"Day": [1, 2, 3, 4, 5, 6, 7]})
     for product in state.predictions_unique:
+        coefficient = random.uniform(0.5, 1.5)
         if state.chosen_metric == "Impressions":
             impressions = np.random.randint(1000, 10000, size=7)
+            impressions = impressions * coefficient
             state.data_metric[product] = impressions
         elif state.chosen_metric == "Click Rate":
             click_rate = np.random.uniform(0, 0.8, size=7)
+            click_rate = click_rate * (coefficient - 0.5)
             state.data_metric[product] = click_rate
         else:
             buy_rate = np.random.uniform(0, 0.2, size=7)
+            buy_rate = buy_rate * (coefficient - 0.5)
             state.data_metric[product] = buy_rate
     properties = {"x": "Day"}
     for index, product in enumerate(state.predictions_unique):
