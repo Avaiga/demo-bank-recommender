@@ -2,6 +2,8 @@
 
 import pandas as pd
 from taipy.gui import Gui, State, Icon, notify, navigate
+import random
+import numpy as np
 
 DATA_PATH = "data/customer_data.csv"
 
@@ -64,9 +66,25 @@ product_counts = pd.DataFrame(
 
 customer_data[product_columns] = customer_data[product_columns]
 selected_data = customer_data.copy()
-predicted_data = customer_data.copy()
+predicted_data = customer_data.copy()[:10]
 predictions_expand = False
-predicted_counts_advertising = None
+predictions_unique = ["None"]
+counts = [0]
+predicted_counts_advertising = pd.DataFrame(
+    {
+        "Product": predictions_unique,
+        "Count": counts,
+    }
+)
+
+chosen_metric = "Impressions"
+data_metric = pd.DataFrame(
+    {"Day": [1, 2, 3, 4, 5, 6, 7], "Metric": [0, 0, 0, 0, 0, 0, 0]}
+)
+properties_metric = {
+    "x": "Day",
+    "y": "Metric",
+}
 
 
 def best_product(state: State) -> None:
@@ -164,35 +182,55 @@ def product_prediction(state: State) -> None:
     predicted_data = state.selected_data.copy()
     predicted_data.insert(0, "Predicted Product", predictions)
     state.predicted_data = predicted_data
+    predictions = state.predicted_data["Predicted Product"].to_list()
+    state.predictions_unique = list(set(predictions))
+    counts = []
+    for product in state.predictions_unique:
+        counts.append(predictions.count(product))
+    state.counts = counts
+    state.predicted_counts_advertising = pd.DataFrame(
+        {
+            "Product": state.predictions_unique,
+            "Count": state.counts,
+        }
+    )
+    state.predicted_counts_advertising = state.predicted_counts_advertising.sort_values(
+        by="Count", ascending=False
+    )
     notify(state, "success", "Best products predicted!")
     state.predictions_expand = True
 
 
 def launch_campaign(state: State) -> None:
     """
-    Simulates the results of an advertising campaign
-    based on the predicted best products
+    Navigate to the advertising results page
     """
     notify(state, "info", "Launching advertising campaign...")
-    predictions = state.predicted_data["Predicted Product"].to_list()
-    predicted_counts_advertising = pd.DataFrame(
-        {
-            "Product": predictions,
-            "Count": state.predicted_data[predictions].sum().values.tolist(),
-        }
-    )
-    # Remove duplicates
-    predicted_counts_advertising = predicted_counts_advertising.drop_duplicates(
-        subset=["Product"]
-    )
-    # Sort by count
-    predicted_counts_advertising = predicted_counts_advertising.sort_values(
-        by=["Count"], ascending=False
-    )
-    print(predicted_counts_advertising)
-    state.predicted_counts_advertising = predicted_counts_advertising
-    notify(state, "success", "Advertising campaign launched!")
     navigate(state, "Advertising-Results")
+    update_metric(state)
+
+
+def update_metric(state: State) -> None:
+    """
+    Simulate random data for the chosen metric
+    and display them
+    """
+    state.data_metric = pd.DataFrame({"Day": [1, 2, 3, 4, 5, 6, 7]})
+    for product in state.predictions_unique:
+        if state.chosen_metric == "Impressions":
+            impressions = np.random.randint(1000, 10000, size=7)
+            state.data_metric[product] = impressions
+        elif state.chosen_metric == "Click Rate":
+            click_rate = np.random.uniform(0, 0.8, size=7)
+            state.data_metric[product] = click_rate
+        else:
+            buy_rate = np.random.uniform(0, 0.2, size=7)
+            state.data_metric[product] = buy_rate
+    properties = {"x": "Day"}
+    for index, product in enumerate(state.predictions_unique):
+        properties[f"y[{index}]"] = product
+    state.data_metric = state.data_metric
+    state.properties_metric = properties
 
 
 page = "Popular Products"
@@ -205,6 +243,21 @@ menu_lov = [
         Icon("images/advertising_results.png", "Advertising Results"),
     ),
 ]
+
+
+def column_style(state, value):
+    """
+    Highlight in red products cells that are 1
+    """
+    if value == 1:
+        return "highlight"
+
+
+style_properties = {}
+
+for product in product_columns:
+    style_properties[f"style[{product}]"] = "column_style"
+
 
 ROOT = """
 <|menu|label=Menu|lov={menu_lov}|on_action=menu_fct|>
@@ -232,13 +285,17 @@ Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=
 <|{product_counts}|chart|type=bar|title=Most Popular Products|>
 |><br/>
 <|Filtered list of clients|expandable|expanded|
-<|{selected_data}|table|rebuild|filter|>
+<|{selected_data}|table|rebuild|filter|properties=style_properties|>
 |>
 <center><|Predict Best Products|button|on_action=product_prediction|><br/><br/></center>
-<|Predicted Best Products|expandable|expanded={predictions_expand}|>
-<|{predicted_data}|table|rebuild|editable|filter|>
+<|Predicted Best Products|expandable|expanded={predictions_expand}|
+<|{predicted_data}|table|rebuild|editable|filter|properties=style_properties|>
+<|{predicted_counts_advertising}|chart|type=bar|title=Predicted Products|>
+|>
 <br/>
 <center><|Launch Advertising Campaign|button|on_action=launch_campaign|><br/></center>
+<br/>
+<br/>
 """
 
 ADVERTISING_RESULTS_PAGE = """
@@ -246,7 +303,8 @@ ADVERTISING_RESULTS_PAGE = """
 
 --------------------------------------------------------------------
 
-<|{predicted_counts_advertising}|chart|type=bar|title=Advertised Products|>
+<|{chosen_metric}|toggle|lov=Impressions;Click Rate; Buy Rate|on_change=update_metric|><br/>
+<|{data_metric}|chart|type=line|rebuild|properties=properties_metric|><br/>
 """
 
 CUSTOMER_DATA_PAGE = """
@@ -274,5 +332,8 @@ pages = {
 if __name__ == "__main__":
     gui = Gui(pages=pages)
     gui.run(
-        title="Bank Product Recommender", dark_mode=False, debug=True, use_reloader=True
+        title="Bank Product Recommender",
+        dark_mode=False,
+        debug=True,
+        use_reloader=False,
     )
