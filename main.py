@@ -77,7 +77,7 @@ predicted_counts_advertising = pd.DataFrame(
     }
 )
 
-chosen_metric = "Impressions"
+chosen_metric = "Notifications"
 data_metric = pd.DataFrame(
     {"Day": [1, 2, 3, 4, 5, 6, 7], "Metric": [0, 0, 0, 0, 0, 0, 0]}
 )
@@ -218,7 +218,7 @@ def update_metric(state: State) -> None:
     state.data_metric = pd.DataFrame({"Day": [1, 2, 3, 4, 5, 6, 7]})
     for product in state.predictions_unique:
         coefficient = random.uniform(0.5, 1.5)
-        if state.chosen_metric == "Impressions":
+        if state.chosen_metric == "Notifications":
             impressions = np.random.randint(1000, 10000, size=7)
             impressions = impressions * coefficient
             state.data_metric[product] = impressions
@@ -270,6 +270,8 @@ ROOT = """
 POPULAR_PRODUCTS_PAGE = """
 # Predict Best **Products**{: .color-primary}
 
+Filter a subset of the client base, predict the best product for each client using closest neighbors
+
 --------------------------------------------------------------------
 
 ## Filter by:<br/>
@@ -303,16 +305,21 @@ Seniority (months): <br/><|{selected_seniority}|slider|min=0|max=150|continuous=
 """
 
 ADVERTISING_RESULTS_PAGE = """
-# Advertising **Results**{: .color-primary}
+# Advertising **Results**{: .color-primary}<br/>
+
+We sent notifications to the clients with the best predicted products. A week later, we collected the following data:
 
 --------------------------------------------------------------------
 
-<|{chosen_metric}|toggle|lov=Impressions;Click Rate; Buy Rate|on_change=update_metric|><br/>
+<|{chosen_metric}|toggle|lov=Notifications;Click Rate; Buy Rate|on_change=update_metric|><br/><br/>
+
 <|{data_metric}|chart|type=line|rebuild|properties=properties_metric|><br/>
 """
 
 CUSTOMER_DATA_PAGE = """
 # Customer **Data**{: .color-primary}
+
+General metrics about the client base
 
 --------------------------------------------------------------------
 
@@ -329,8 +336,8 @@ CUSTOMER_DATA_PAGE = """
 pages = {
     "/": ROOT,
     "Popular-Products": POPULAR_PRODUCTS_PAGE,
-    "Customer-Data": CUSTOMER_DATA_PAGE,
     "Advertising-Results": ADVERTISING_RESULTS_PAGE,
+    "Customer-Data": CUSTOMER_DATA_PAGE,
 }
 
 if __name__ == "__main__":
